@@ -62,6 +62,9 @@
   <label class="field-label">想合作的餐廳(可複選)</label>
   <div id="restaurant-list"></div>
 
+  <label class="field-label">Instagram帳號ID</label>
+  <input type="text" id="ig-handle" placeholder="例如:@your_ig_id">
+
   <label class="field-label">未來兩週可配合的日期／時段</label>
   <input type="text" id="availability" placeholder="例如:7/10(三)晚上、7/12(五)全天">
 
@@ -163,6 +166,7 @@
 
     const restaurants = Array.from(document.querySelectorAll('.restaurant-check:checked'))
       .map(el => el.value);
+    const igHandle = document.getElementById('ig-handle').value;
     const availability = document.getElementById('availability').value;
     const priorEl = document.querySelector('input[name=prior]:checked');
     const priorCollab = priorEl ? priorEl.value : '';
@@ -172,6 +176,7 @@
       userId: profile ? profile.userId : '',
       displayName: profile ? profile.displayName : '',
       restaurants: restaurants,
+      igHandle: igHandle,
       availability: availability,
       priorCollab: priorCollab,
       notes: notes
