@@ -49,7 +49,7 @@
 <body>
 
 <div class="card">
-  <h1>7月探店邀約意願表單</h1>
+  <h1 id="form-title">探店意願表單</h1>
   <p class="sub">請勾選您想合作的餐廳並填寫檔期,我們會在名額確認後與您聯繫。</p>
 
   <div class="profile" id="profile" style="display:none;">
@@ -121,9 +121,13 @@
 
     fetch(API_URL)
       .then(res => res.json())
-      .then(restaurants => {
+      .then(payload => {
+        if (payload.title) {
+          document.getElementById('form-title').textContent = payload.title;
+        }
+        const restaurants = payload.restaurants || [];
         const list = document.getElementById('restaurant-list');
-        if (!restaurants || restaurants.length === 0) {
+        if (restaurants.length === 0) {
           list.innerHTML = '<p style="font-size:13px;color:#5f5e5a;">目前沒有可選擇的餐廳。</p>';
           return;
         }
