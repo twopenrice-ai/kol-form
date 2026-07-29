@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>探店意願表單</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  body {
+    font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    margin: 0;
+    padding: 20px 16px 40px;
+    background: #f7f6f2;
+    color: #2c2c2a;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 17px; font-weight: 500; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #5f5e5a; margin: 0 0 16px; }
+  .profile { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .profile img { width:36px; height:36px; border-radius:50%; }
+  .profile span { font-size:14px; }
+  label.field-label { font-size:13px; font-weight:500; display:block; margin:16px 0 8px; }
+  .restaurant-item {
+    display:flex; gap:8px; padding:10px 0; border-bottom:1px solid #eee;
+  }
+  .restaurant-item p { margin:0; }
+  .restaurant-item .name { font-size:14px; }
+  .restaurant-item .desc { font-size:12px; color:#5f5e5a; margin-top:2px; }
+  input[type=text], textarea {
+    width:100%; box-sizing:border-box; padding:8px 10px;
+    border:1px solid #d3d1c7; border-radius:6px; font-size:14px;
+  }
+  .radio-row { display:flex; gap:16px; font-size:14px; }
+  button {
+    width:100%; padding:12px; margin-top:20px;
+    background:#2c2c2a; color:#fff; border:none; border-radius:8px;
+    font-size:15px; font-weight:500;
+  }
+  button:disabled { opacity:0.5; }
+  #status { text-align:center; font-size:13px; margin-top:10px; color:#5f5e5a; }
+</style>
+</head>
+<body>
+
+<div id="debug-bar" style="max-width:480px;margin:0 auto 12px;padding:10px 14px;background:#fff3cd;border:1px solid #e0c060;border-radius:8px;font-size:12px;color:#5a4a10;white-space:pre-wrap;">除錯訊息:準備中...</div>
+
+<div class="card">
+  <h1>7月探店邀約意願表單</h1>
+  <p class="sub">請勾選您想合作的餐廳並填寫檔期,我們會在名額確認後與您聯繫。</p>
+
+  <div class="profile" id="profile" style="display:none;">
+    <img id="profile-pic" src="" alt="">
+    <span id="profile-name"></span>
+  </div>
+
+  <label class="field-label">想合作的餐廳(可複選)</label>
+  <div id="restaurant-list"></div>
+
+  <label class="field-label">未來兩週可配合的日期／時段</label>
+  <input type="text" id="availability" placeholder="例如:7/10(三)晚上、7/12(五)全天">
+
+  <label class="field-label">近三個月是否配合過同類型餐廳</label>
+  <div class="radio-row">
+    <label><input type="radio" name="prior" value="有"> 有</label>
+    <label><input type="radio" name="prior" value="沒有"> 沒有</label>
+  </div>
+
+  <label class="field-label">備註(過敏原、特殊需求等,非必填)</label>
+  <textarea id="notes" rows="2" placeholder="例如:不吃海鮮"></textarea>
+
+  <button id="submit-btn" onclick="handleSubmit()">送出回覆</button>
+  <p id="status"></p>
+</div>
+
+<script>
+  let profile = null;
+
+  // 記得把這裡換成你自己在 LINE Developers Console 建立的 LIFF ID
+  const LIFF_ID = 'YOUR_LIFF_ID';
+
+  // 記得把這裡換成你 Apps Script 部署後拿到的網址(結尾是 /exec)
+  const API_URL = 'YOUR_APPS_SCRIPT_EXEC_URL';
+
+  function debugLog(msg) {
+    const bar = document.getElementById('debug-bar');
+    bar.textContent = bar.textContent + '\n' + msg;
+  }
+
+  window.onerror = function (message, source, lineno) {
+    debugLog('捕捉到未預期錯誤: ' + message + ' (第' + lineno + '行)');
+    return false;
+  };
+
+  window.onload = function () {
+    debugLog('頁面已載入');
+    loadRestaurants();
+
+    if (typeof liff === 'undefined') {
+      debugLog('liff SDK沒有成功載入,無法繼續。');
+      return;
+    }
+
+    liff.init({ liffId: LIFF_ID })
+      .then(async () => {
+        debugLog('liff.init 成功,isLoggedIn=' + liff.isLoggedIn());
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        try {
+          profile = await liff.getProfile();
+          debugLog('取得使用者資料成功:' + profile.displayName);
+          document.getElementById('profile').style.display = 'flex';
+          document.getElementById('profile-pic').src = profile.pictureUrl;
+          document.getElementById('profile-name').textContent = profile.displayName;
+        } catch (profileErr) {
+          debugLog('getProfile 失敗: ' + JSON.stringify(profileErr));
+        }
+      })
+      .catch((err) => {
+        debugLog('liff.init 失敗: ' + JSON.stringify(err));
+      });
+  };
+
+  function loadRestaurants() {
+    document.getElementById('restaurant-list').innerHTML =
+      '<p style="font-size:13px;color:#5f5e5a;">載入餐廳清單中...</p>';
+
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(restaurants => {
+        const list = document.getElementById('restaurant-list');
+        if (!restaurants || restaurants.length === 0) {
+          list.innerHTML = '<p style="font-size:13px;color:#5f5e5a;">目前沒有可選擇的餐廳。</p>';
+          return;
+        }
+        list.innerHTML = restaurants.map(r => `
+          <div class="restaurant-item">
+            <input type="checkbox" value="${r.name}" class="restaurant-check">
+            <div>
+              <p class="name">${r.id}. ${r.name}</p>
+              <p class="desc">${r.desc}</p>
+            </div>
+          </div>
+        `).join('');
+      })
+      .catch(err => {
+        document.getElementById('restaurant-list').innerHTML =
+          '<p style="font-size:13px;color:#a32d2d;">餐廳清單載入失敗:' + err.message + '</p>';
+      });
+  }
+
+  function handleSubmit() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    document.getElementById('status').textContent = '送出中...';
+
+    const restaurants = Array.from(document.querySelectorAll('.restaurant-check:checked'))
+      .map(el => el.value);
+    const availability = document.getElementById('availability').value;
+    const priorEl = document.querySelector('input[name=prior]:checked');
+    const priorCollab = priorEl ? priorEl.value : '';
+    const notes = document.getElementById('notes').value;
+
+    const data = {
+      userId: profile ? profile.userId : '',
+      displayName: profile ? profile.displayName : '',
+      restaurants: restaurants,
+      availability: availability,
+      priorCollab: priorCollab,
+      notes: notes
+    };
+
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(data)
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.status === 'ok') {
+          document.getElementById('status').textContent = '回覆已送出,感謝您!';
+          setTimeout(() => { if (typeof liff !== 'undefined') liff.closeWindow(); }, 1500);
+        } else {
+          document.getElementById('status').textContent = '送出失敗:' + result.message;
+          btn.disabled = false;
+        }
+      })
+      .catch(err => {
+        document.getElementById('status').textContent = '送出失敗,請再試一次';
+        btn.disabled = false;
+      });
+  }
+</script>
+
+</body>
+</html>
