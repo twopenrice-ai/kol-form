@@ -66,9 +66,6 @@
   <label class="field-label">未來兩週可配合的日期／時段</label>
   <input type="text" id="availability" placeholder="例如:7/10(三)晚上、7/12(五)全天">
 
-  <label class="field-label">備註(過敏原、特殊需求等,非必填)</label>
-  <textarea id="notes" rows="2" placeholder="例如:不吃海鮮"></textarea>
-
   <button id="submit-btn" onclick="handleSubmit()">送出回覆</button>
   <p id="status"></p>
 </div>
@@ -150,15 +147,13 @@
       .map(el => el.value);
     const igHandle = document.getElementById('ig-handle').value;
     const availability = document.getElementById('availability').value;
-    const notes = document.getElementById('notes').value;
 
     const data = {
       userId: profile ? profile.userId : '',
       displayName: profile ? profile.displayName : '',
       restaurants: restaurants,
       igHandle: igHandle,
-      availability: availability,
-      notes: notes
+      availability: availability
     };
 
     fetch(API_URL, {
