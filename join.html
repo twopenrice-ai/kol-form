@@ -59,6 +59,10 @@ input:focus,textarea:focus{border-color:var(--ink);background:var(--bg)}
 .money{position:relative}
 .money::before{content:"NT$";position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--soft);font-size:15px;pointer-events:none}
 .money input{padding-left:50px}
+.handle{position:relative}
+.handle span{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--soft);font-size:16px;pointer-events:none}
+.handle.at input{padding-left:32px}
+.handle:not(.at) span{display:none}
 .readout{font-size:13px;color:var(--soft);margin-top:6px;min-height:1.2em}
 
 /* chips */
@@ -188,6 +192,13 @@ button.linebtn{width:100%;margin-top:22px}
         <div class="chips" id="mainChips"><span class="hint" style="margin:0">先在上一題選平台</span></div>
         <div class="err">請選一個主要平台</div>
       </div>
+      <div class="q" data-req data-type="acct">
+        <label for="acct" id="acctLabel">主要平台的帳號<span class="req">*</span></label>
+        <span class="hint" id="acctHint">先在上一題選主要平台</span>
+        <div class="handle" id="acctBox"><span id="acctPre">@</span><input type="text" id="acct" name="acct" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+        <div class="readout" id="acctRead"></div>
+        <div class="err" id="acctErr">請填寫帳號</div>
+      </div>
       <div class="q" data-req data-type="int">
         <label for="fans">主要平台的粉絲數<span class="req">*</span></label>
         <span class="hint">只填數字，例如 16000</span>
@@ -195,15 +206,9 @@ button.linebtn{width:100%;margin-top:22px}
         <div class="readout" id="fansRead"></div>
         <div class="err">請只填數字，例如 16000</div>
       </div>
-      <div class="q" data-req data-type="url">
-        <label for="mainUrl">主要平台的帳號連結<span class="req">*</span></label>
-        <span class="hint">例如 https://www.instagram.com/openricetw/</span>
-        <input type="url" id="mainUrl" name="mainUrl" inputmode="url" autocapitalize="off">
-        <div class="err">請貼上完整連結，開頭是 https://</div>
-      </div>
       <div class="q">
-        <label for="otherUrls">其他平台連結</label>
-        <span class="hint">選填，一行一個</span>
+        <label for="otherUrls">其他平台帳號</label>
+        <span class="hint">選填，一行一個，填帳號或貼連結都可以</span>
         <textarea id="otherUrls" name="otherUrls" autocapitalize="off"></textarea>
       </div>
     </section>
@@ -302,6 +307,47 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
   var back=document.getElementById('back'), next=document.getElementById('next');
   var cur=0, profile=null, wasMember=false, lastNick='', askedAtSubmit=false;
 
+  // 各平台：只要填帳號，程式自動組成連結
+  var ACCT={
+    'Instagram':{at:true, url:function(h){return 'https://www.instagram.com/'+h+'/'}, hint:'只填帳號就好，例如 openricetw'},
+    'Threads':  {at:true, url:function(h){return 'https://www.threads.net/@'+h}, hint:'只填帳號就好，例如 openricetw'},
+    'TikTok':   {at:true, url:function(h){return 'https://www.tiktok.com/@'+h}, hint:'只填帳號就好，@ 後面那段'},
+    'YouTube':  {at:true, url:function(h){return 'https://www.youtube.com/@'+h}, hint:'填頻道帳號（@ 後面那段），或直接貼頻道連結'},
+    'Facebook': {at:false,url:function(h){return 'https://www.facebook.com/'+h}, hint:'填粉專網址 facebook.com/ 後面那段，或直接貼粉專連結'}
+  };
+  function curMain(){ return (form.querySelector('input[name="main"]:checked')||{}).value||''; }
+  function acctUrl(v,plat){
+    v=String(v||'').trim().replace(/\s+/g,'');
+    if(!v) return null;
+    var c0=ACCT[plat];
+    // 有帳號格式的平台：只有 http 開頭或含有「/」才當成連結，避免 my.food 這種帳號被誤判
+    var looksUrl=c0 ? (/^https?:\/\//i.test(v) || /\//.test(v))
+                    : (/^https?:\/\//i.test(v) || /^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/|$)/i.test(v));
+    if(looksUrl){
+      if(!/^https?:\/\//i.test(v)) v='https://'+v;
+      return /^https?:\/\/[^\s\/]+\.[^\s\/]+/i.test(v)?v:null;
+    }
+    var c=ACCT[plat]; if(!c) return null;           // 小紅書、部落格、其他：一定要貼連結
+    var h=v.replace(/^@+/,'');
+    return /^[A-Za-z0-9._-]{1,60}$/.test(h)?c.url(h):null;
+  }
+  function updateAcct(){
+    var plat=curMain(), c=ACCT[plat];
+    var lab=document.getElementById('acctLabel'), hint=document.getElementById('acctHint');
+    var box=document.getElementById('acctBox'), inp=document.getElementById('acct');
+    lab.firstChild.nodeValue=plat?(plat+' '+(c?'帳號':'連結')):'主要平台的帳號';
+    hint.textContent=plat?(c?c.hint:'請貼上完整連結'):'先在上一題選主要平台';
+    box.classList.toggle('at',!!(c&&c.at));
+    inp.setAttribute('inputmode',c?'text':'url');
+    inp.placeholder=c?(c.at?'your_id':''):'https://';
+    document.getElementById('acctErr').textContent=c?'帳號只能有英文、數字、底線或句點，或直接貼連結':'請貼上完整連結，例如 https://www.xiaohongshu.com/…';
+    showAcct();
+  }
+  function showAcct(){
+    var u=acctUrl(document.getElementById('acct').value,curMain());
+    document.getElementById('acctRead').textContent=u?('連結：'+u):'';
+  }
+
   function vals(name){return [].slice.call(form.querySelectorAll('input[name="'+name+'"]:checked')).map(function(i){return i.value})}
   function digits(s){return String(s||'').replace(/[,，\s]/g,'')}
 
@@ -314,7 +360,13 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
     var keep=box.querySelector('input[value="'+prev+'"]'); if(keep) keep.checked=true;
     else if(sel.length===1) box.querySelector('input').checked=true;
   }
-  document.getElementById('platChips').addEventListener('change',syncMain);
+  document.getElementById('platChips').addEventListener('change',function(){ syncMain(); updateAcct(); });
+  document.getElementById('mainChips').addEventListener('change',updateAcct);
+  document.getElementById('acct').addEventListener('input',function(e){
+    var c=ACCT[curMain()], el=e.target;
+    if(c && c.at && /^@/.test(el.value)) el.value=el.value.replace(/^@+/,'');   // 前面已經有 @，不用重複打
+    showAcct();
+  });
 
   // fans readout
   var fans=document.getElementById('fans');
@@ -339,6 +391,7 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
       else if(v && t==='email') ok=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
       else if(v && t==='int') ok=/^\d+$/.test(digits(v)) && Number(digits(v))>0;
       else if(v && t==='url') ok=/^https?:\/\/\S+\.\S+/i.test(v);
+      else if(v && t==='acct') ok=!!acctUrl(v,curMain());
     }
     q.classList.toggle('bad',!ok); return ok;
   }
@@ -378,7 +431,7 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
     return {userId:profile.userId,displayName:profile.displayName,
       nick:g('nick'),name:g('name'),email:g('email'),
       plats:vals('plats'),main:vals('main')[0]||'',fans:digits(g('fans')),
-      mainUrl:g('mainUrl'),otherUrls:g('otherUrls'),coop:coop,
+      mainUrl:acctUrl(g('acct'),curMain()),otherUrls:g('otherUrls'),coop:coop,
       pT:price('pT'),pV:price('pV'),pS:price('pS'),pNote:g('pNote'),
       region:vals('region'),consent:vals('consent')[0]||''};
   }
