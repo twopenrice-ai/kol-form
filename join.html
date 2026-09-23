@@ -292,6 +292,7 @@ button.linebtn{width:100%;margin-top:22px}
 var LIFF_ID = '2010886104-ALoRi8QM';   // 入社表的 LIFF ID，例如 '2010886104-xxxxxxxx'
 var API_URL = 'https://script.google.com/macros/s/AKfycbyNUiqu_vXSAbidn23agJBGC8yjD6RWRCEZsWScu2QT3Ob6XuPr6Nnj00xVJ2r8qZ-lpA/exec';   // 入社表 Apps Script 部署網址（結尾是 /exec）
 /* ======================================== */
+var COLLAB_URL = 'https://liff.line.me/2010886104-EBOWsl9I';   // 意願表（本期探店邀請）
 var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不會送出資料
 
 (function(){
@@ -305,7 +306,7 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
   var steps=[].slice.call(document.querySelectorAll('section.step'));
   var bars=[].slice.call(document.querySelectorAll('.bars span'));
   var back=document.getElementById('back'), next=document.getElementById('next');
-  var cur=0, profile=null, wasMember=false, lastNick='', askedAtSubmit=false;
+  var cur=0, profile=null, wasMember=false, lastNick='', askedAtSubmit=false, fromCollab=false;
 
   // 各平台：只要填帳號，程式自動組成連結
   var ACCT={
@@ -443,6 +444,11 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
     if(wasMember) document.getElementById('doneTitle').textContent='資料更新完成！';
     document.getElementById('friendNote').hidden=true;
     if(!isFriend) document.getElementById('doneMsg').textContent='資料已經收到。提醒你：目前還沒加入「OpenRice 合作社」官方帳號好友，小編可能會改用 Email 聯絡你。';
+    if(new URLSearchParams(location.search).get('from')==='collab'){
+      fromCollab=true;
+      document.getElementById('closeBtn').textContent='回到本期探店邀請';
+      document.querySelector('.after').textContent='入社完成，可以回去報名想合作的店家了。';
+    }
     document.getElementById('done').classList.add('show'); window.scrollTo(0,0);
     // 自動在聊天室傳一則訊息，讓小編知道是誰（需在 LIFF 設定開啟 chat_message.write）
     if(!PREVIEW && liff.isInClient()){
@@ -476,6 +482,7 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
   });
 
   document.getElementById('closeBtn').addEventListener('click',function(){
+    if(fromCollab){ location.href=COLLAB_URL; return; }
     if(!PREVIEW && liff.isInClient()) liff.closeWindow();
     else document.querySelector('.after').textContent='請切換回 LINE 應用程式。';
   });
