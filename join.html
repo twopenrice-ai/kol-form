@@ -124,6 +124,10 @@ button:focus-visible{outline:2px solid var(--rice);outline-offset:2px}
 .who img{width:32px;height:32px;border-radius:50%;background:var(--line);object-fit:cover}
 .who b{color:var(--ink)}
 .member{margin-top:14px;padding:12px 14px;border-radius:10px;background:var(--rice-wash);font-size:14px;line-height:1.6}
+.friend{margin-top:14px;padding:14px;border-radius:10px;border:1.5px solid var(--err);font-size:14px;line-height:1.6}
+.friend[hidden]{display:none}
+.friend p{margin:0 0 10px}
+.friend button{width:100%;min-height:46px;background:#06c755;color:#fff;font-size:15px}
 .gate{padding-top:32px}
 .gate h2{font-size:22px;font-weight:900;margin:0 0 8px}
 .gate p{color:var(--soft);margin:0}
@@ -139,6 +143,10 @@ button.linebtn{width:100%;margin-top:22px}
     <h1>Foodie Club 入社登記</h1>
     <p class="lede">美食創作者合作社。填好資料就完成入社，有適合的店家時小編會在 LINE 上聯絡你，大約 3 分鐘。</p>
     <div class="who" id="who" hidden><img id="whoPic" alt=""><span>以 LINE 帳號 <b id="whoName"></b> 登記</span></div>
+    <div class="friend" id="friendNote" hidden>
+      <p>你還沒加入或已封鎖「OpenRice 合作社」官方帳號。加入後，小編才能在 LINE 上聯絡你。</p>
+      <button type="button" id="friendBtn">加入好友／解除封鎖</button>
+    </div>
     <div class="member" id="memberNote" hidden>歡迎回來，<b id="memberNick"></b>！你已經是社員了。重新填寫會更新你的資料，以最新一次為準。</div>
   </header>
 
@@ -292,7 +300,7 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
   var steps=[].slice.call(document.querySelectorAll('section.step'));
   var bars=[].slice.call(document.querySelectorAll('.bars span'));
   var back=document.getElementById('back'), next=document.getElementById('next');
-  var cur=0, profile=null, wasMember=false, lastNick='';
+  var cur=0, profile=null, wasMember=false, lastNick='', askedAtSubmit=false;
 
   function vals(name){return [].slice.call(form.querySelectorAll('input[name="'+name+'"]:checked')).map(function(i){return i.value})}
   function digits(s){return String(s||'').replace(/[,，\s]/g,'')}
@@ -380,6 +388,8 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
     document.getElementById('bar').style.display='none';
     document.getElementById('who').hidden=true; document.getElementById('memberNote').hidden=true;
     if(wasMember) document.getElementById('doneTitle').textContent='資料更新完成！';
+    document.getElementById('friendNote').hidden=true;
+    if(!isFriend) document.getElementById('doneMsg').textContent='資料已經收到。提醒你：目前還沒加入「OpenRice 合作社」官方帳號好友，小編可能會改用 Email 聯絡你。';
     document.getElementById('done').classList.add('show'); window.scrollTo(0,0);
     // 自動在聊天室傳一則訊息，讓小編知道是誰（需在 LIFF 設定開啟 chat_message.write）
     if(!PREVIEW && liff.isInClient()){
@@ -397,6 +407,11 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
   next.addEventListener('click',function(){
     if(!validStep(cur)) return;
     if(cur<steps.length-1){ show(cur+1); return }
+    if(!isFriend && !askedAtSubmit){
+      askedAtSubmit=true;
+      askFriend().then(function(){ next.click(); });
+      return;
+    }
     var data=collect(); lastNick=data.nick;
     next.disabled=true; next.textContent='送出中…';
     document.getElementById('sendErr').style.display='none';
@@ -427,6 +442,22 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
     document.getElementById('who').hidden=false;
     next.disabled=false;
   }
+  // 檢查是否為官方帳號好友；不是的話跳出加好友／解除封鎖視窗
+  var isFriend=true;
+  function checkFriend(){
+    if(PREVIEW || !liff.getFriendship) return Promise.resolve(true);
+    return liff.getFriendship().then(function(f){
+      isFriend=!!(f && f.friendFlag);
+      document.getElementById('friendNote').hidden=isFriend;
+      return isFriend;
+    }).catch(function(){ return true; });
+  }
+  function askFriend(){
+    if(PREVIEW || typeof liff.requestFriendship!=='function') return checkFriend();
+    return liff.requestFriendship().catch(function(){}).then(checkFriend);
+  }
+  document.getElementById('friendBtn').addEventListener('click',askFriend);
+
   function member(r){
     if(r && r.member){ wasMember=true; document.getElementById('memberNick').textContent=r.nick||profile.displayName; document.getElementById('memberNote').hidden=false; }
   }
@@ -442,6 +473,7 @@ var PREVIEW = !LIFF_ID || !API_URL;   // 兩個都沒填時是預覽模式，不
       if(!liff.isLoggedIn()){ liff.login({redirectUri:location.href}); return; }
       return liff.getProfile().then(function(p){
         ready(p);
+        checkFriend().then(function(ok){ if(!ok) askFriend(); });
         return fetch(API_URL+'?action=check&userId='+encodeURIComponent(p.userId))
           .then(function(r){return r.json()}).then(member).catch(function(){});
       });
