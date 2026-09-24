@@ -64,7 +64,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans TC
 .end{padding:28px 0 36px;text-align:center;color:var(--soft);font-size:13px}
 .end b{display:block;font-size:15px;color:var(--ink);margin-bottom:4px}
 /* ---- 往下滑提示 ---- */
-.scroll-hint{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;background:var(--night);color:#fff;font-size:14px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.18);transition:opacity .3s,transform .3s;z-index:10;pointer-events:none}
+.scroll-hint{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;background:#6b6459;color:#fff;font-size:14px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.18);transition:opacity .3s,transform .3s;z-index:10;pointer-events:none}
 .scroll-hint span{display:inline-block;animation:nudge 1.4s ease-in-out infinite}
 .scroll-hint.hide{opacity:0;transform:translate(-50%,10px)}
 @keyframes nudge{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
