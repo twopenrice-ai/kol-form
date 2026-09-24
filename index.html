@@ -136,8 +136,26 @@ button.linebtn{width:100%;margin-top:22px}
 
 /* ---- 意願表 ---- */
 .list{margin-top:6px}
-.card{position:relative;display:block;border:1.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg);cursor:pointer}
-.card+.card{margin-top:14px}
+/* ---- 左右滑輪播 ---- */
+.rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  margin:0 -20px;padding:4px 20px 6px;scroll-padding:0 20px}
+.rail::-webkit-scrollbar{display:none}
+.rail.one .card{flex-basis:100%}
+.card{position:relative;display:block;flex:0 0 86%;scroll-snap-align:start;border:1.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg);cursor:pointer}
+.swipe-hint{display:flex;align-items:center;justify-content:space-between;margin:2px 0 8px;font-size:13px;color:var(--soft)}
+.swipe-hint b{font-weight:700;color:var(--ink);display:inline-flex;align-items:center;gap:4px}
+.swipe-hint b i{font-style:normal;display:inline-block;animation:swipe 1.3s ease-in-out infinite}
+.swipe-hint.done b{display:none}
+@keyframes swipe{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+.pager{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px}
+.pager button{min-height:32px;width:32px;border-radius:50%;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-size:16px;line-height:1;padding:0}
+.pager button:disabled{opacity:.3}
+.dots{display:flex;gap:6px}
+.dots span{width:7px;height:7px;border-radius:4px;background:var(--line);transition:width .2s,background .2s}
+.dots span.on{width:20px;background:var(--ink)}
+.picked{margin-top:10px;font-size:14px;color:var(--soft);text-align:center;min-height:1.4em}
+.picked b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.swipe-hint b i{animation:none}}
 .card input{position:absolute;opacity:0;width:0;height:0}
 .card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--line)}
 .card .txt{padding:12px 14px 14px}
@@ -151,6 +169,9 @@ button.linebtn{width:100%;margin-top:22px}
 .card small{color:var(--soft);font-size:13px}
 .card a{display:inline-block;margin-top:8px;font-size:14px;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 .q.bad .card{border-color:var(--err)}
+.card dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0 0;padding:10px 12px;background:var(--field);border-radius:10px;font-size:14px}
+.card dt{color:var(--soft)}
+.card dd{margin:0;font-weight:700;white-space:pre-line}
 .muted{color:var(--soft);font-size:14px;margin:6px 0 0}
 .join{margin-top:28px;padding:18px 16px;border-radius:14px;background:var(--rice-wash)}
 .join[hidden]{display:none}
@@ -248,23 +269,66 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
   function esc(t){return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function post(url,obj){return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(obj)}).then(function(r){return r.json()})}
 
+  // ---------- 輪播 ----------
+  function updatePicked(){
+    var names=[].slice.call(document.querySelectorAll('.restaurant-check:checked')).map(function(el){return el.value});
+    $('picked').innerHTML=names.length?'已選 <b>'+names.length+'</b> 間：'+esc(names.join('、')):'';
+  }
+  function setupRail(n){
+    if(n<2) return;
+    var rail=$('rail'), cards=rail.querySelectorAll('.card'), dots=$('dots').children, cur=0, touched=false;
+    function step(){ return cards.length>1 ? cards[1].offsetLeft-cards[0].offsetLeft : rail.clientWidth; }
+    function go(i){ i=Math.max(0,Math.min(n-1,i)); rail.scrollTo({left:i*step(),behavior:'smooth'}); }
+    function sync(){
+      var i=Math.round(rail.scrollLeft/step());
+      if(rail.scrollLeft+rail.clientWidth>=rail.scrollWidth-4) i=n-1;   // 最後一張
+      cur=Math.max(0,Math.min(n-1,i));
+      for(var k=0;k<dots.length;k++) dots[k].className=k===cur?'on':'';
+      $('prevBtn').disabled=cur===0; $('nextBtn').disabled=cur===n-1;
+      if(touched && rail.scrollLeft>10) $('swipeHint').classList.add('done');   // 滑過一次就收起提示
+    }
+    var t; rail.addEventListener('scroll',function(){ clearTimeout(t); t=setTimeout(sync,60); },{passive:true});
+    rail.addEventListener('touchstart',function(){ touched=true; },{passive:true});
+    $('prevBtn').addEventListener('click',function(){ touched=true; go(cur-1); });
+    $('nextBtn').addEventListener('click',function(){ touched=true; go(cur+1); });
+    sync();
+    // 第一次打開時輕輕往右推一下再回來，提示可以滑動
+    if(!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){
+      setTimeout(function(){ if(touched) return; rail.scrollTo({left:56,behavior:'smooth'});
+        setTimeout(function(){ if(!touched) rail.scrollTo({left:0,behavior:'smooth'}); },550); },900);
+    }
+  }
+
   // ---------- 店家清單（沿用原本的 API） ----------
   function loadRestaurants(){
-    var p = PREVIEW ? Promise.resolve({title:'10 月探店邀請',restaurants:[{id:1,name:'示範餐廳 A',area:'中山區',desc:'巷弄昭和居酒屋',image:'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23b5523b%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23e5a15c%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url%28%23g%29%22/%3E%3C/svg%3E',link:'#'},{id:2,name:'示範餐廳 B',area:'大安區',desc:'沒有照片時的樣子',image:'',link:''}]})
+    var p = PREVIEW ? Promise.resolve({title:'10 月探店邀請',restaurants:[{id:1,name:'金鳳家 Sashimi & Bar',area:'中山區',desc:'巷弄昭和居酒屋',time:'10/1–10/15 平日晚上',groups:'2',size:'2',terms:'互惠：招待 2 人套餐\n需發 IG 貼文 1 則＋限動 1 則',image:'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23b5523b%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23e5a15c%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url%28%23g%29%22/%3E%3C/svg%3E',link:'#'},{id:2,name:'天龍國酒廠',area:'中山區',desc:'中山區人氣深夜食堂',time:'10/5–10/20 週一至週四',groups:'3',size:'2',terms:'稿費 NT$3,000\nReels 1 支',image:'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%233b4a5c%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%237d8fa3%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url%28%23g%29%22/%3E%3C/svg%3E',link:'#'},{id:3,name:'波記茶餐廳',area:'大安區',desc:'20 年地道港式料理',time:'10 月全月',groups:'2',size:'2–3',terms:'互惠：招待 3 道招牌菜',image:'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23c9892e%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23f2c45a%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url%28%23g%29%22/%3E%3C/svg%3E',link:'#'},{id:4,name:'波記冰室',area:'大安區',desc:'延吉街濃濃港澳茶室風',time:'10/10 前',groups:'1',size:'2',terms:'互惠＋限動 2 則',image:'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232f6b5a%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2386b89d%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url%28%23g%29%22/%3E%3C/svg%3E',link:'#'}]})
                     : fetch(API_URL).then(function(r){return r.json()});
     p.then(function(payload){
       if(payload.title) $('form-title').textContent=payload.title;
       var list=payload.restaurants||[], box=$('restaurant-list');
       if(!list.length){ box.innerHTML='<p class="muted">新一期的店家還在準備中，開放報名時我們會在 LINE 上通知你，先入社就不會錯過喔！</p>'; return; }
-      box.innerHTML=list.map(function(r){
+      var cards=list.map(function(r){
         var img=r.image?'<img src="'+esc(r.image)+'" alt="'+esc(r.name)+'" loading="lazy">':'';
         var area=r.area?'<span class="area">'+esc(r.area)+'</span>':'';
-        var link=r.link?'<br><a href="'+esc(r.link)+'" target="_blank" rel="noopener">看店家資訊 →</a>':'';
+        var link=r.link?'<a href="'+esc(r.link)+'" target="_blank" rel="noopener">看店家資訊 →</a>':'';
+        var unit=function(v,u){ return /^\d+$/.test(String(v))?v+' '+u:v; };   // 純數字自動加單位
+        var info=[['可探店時間',r.time],['需求組數',r.groups&&unit(r.groups,'組')],['每組人數',r.size&&unit(r.size,'人')],['合作條件',r.terms]]
+          .filter(function(x){return x[1]}).map(function(x){return '<dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd>'}).join('');
+        info=info?'<dl>'+info+'</dl>':'';
         return '<label class="card'+(r.image?'':' noimg')+'"><input type="checkbox" class="restaurant-check" value="'+esc(r.name)+'">'+img+
-               '<span class="tick" aria-hidden="true">✓</span><div class="txt"><b>'+esc(r.name)+'</b>'+area+'<small>'+esc(r.desc)+'</small>'+link+'</div></label>';
+               '<span class="tick" aria-hidden="true">✓</span><div class="txt"><b>'+esc(r.name)+'</b>'+area+'<small>'+esc(r.desc)+'</small>'+info+link+'</div></label>';
       }).join('');
+      var many=list.length>1;
+      box.innerHTML=
+        (many?'<div class="swipe-hint" id="swipeHint"><span>共 '+list.length+' 間店家</span><b>左右滑動看更多 <i>→</i></b></div>':'')+
+        '<div class="rail'+(many?'':' one')+'" id="rail">'+cards+'</div>'+
+        (many?'<div class="pager"><button type="button" id="prevBtn" aria-label="上一間">‹</button><div class="dots" id="dots">'+
+          list.map(function(_,i){return '<span'+(i?'':' class="on"')+'></span>'}).join('')+
+          '</div><button type="button" id="nextBtn" aria-label="下一間">›</button></div>':'')+
+        '<div class="picked" id="picked"></div>';
+      setupRail(list.length);
       // 勾選時整張卡片變色（相容不支援 :has 的舊手機）
-      box.addEventListener('change',function(e){ if(e.target.classList.contains('restaurant-check')) e.target.closest('.card').classList.toggle('on',e.target.checked); });
+      box.addEventListener('change',function(e){ if(e.target.classList.contains('restaurant-check')){ e.target.closest('.card').classList.toggle('on',e.target.checked); updatePicked(); } });
       // 點「看店家資訊」只開連結，不會勾選
       box.addEventListener('click',function(e){ if(e.target.closest('a')) e.stopPropagation(); });
     }).catch(function(){
