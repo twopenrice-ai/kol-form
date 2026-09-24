@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="only light">
 <title>OpenRice Foodie Club 本期探店邀請</title>
-<meta name="description" content="本期合作店家上架中，看中哪家直接報名！">
-<meta property="og:title" content="本期探店邀請｜OpenRice Foodie Club">
-<meta property="og:description" content="本期合作店家上架中，看中哪家直接報名！">
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -138,17 +135,22 @@ button.linebtn{width:100%;margin-top:22px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* ---- 意願表 ---- */
-.list{display:grid;gap:10px;margin-top:6px}
-.shop{position:relative;display:block}
-.shop input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
-.shop div{display:grid;grid-template-columns:28px 1fr;gap:4px 10px;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--field)}
-.shop .box{grid-row:1/3;width:22px;height:22px;border:2px solid var(--line);border-radius:6px;margin-top:2px;display:grid;place-items:center;font-size:14px;font-weight:900;color:transparent}
-.shop b{font-size:16px;line-height:1.4}
-.shop small{color:var(--soft);font-size:13px;line-height:1.5}
-.shop input:checked+div{border-color:var(--ink);background:var(--rice-wash)}
-.shop input:checked+div .box{background:var(--rice);border-color:var(--rice);color:var(--rice-ink)}
-.shop input:focus-visible+div{outline:2px solid var(--ink);outline-offset:2px}
-.q.bad .shop div{border-color:var(--err)}
+.list{margin-top:6px}
+.card{position:relative;display:block;border:1.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg);cursor:pointer}
+.card+.card{margin-top:14px}
+.card input{position:absolute;opacity:0;width:0;height:0}
+.card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--line)}
+.card .txt{padding:12px 14px 14px}
+.card.noimg .txt{padding-right:48px}
+.card .tick{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.95);border:2px solid var(--line);display:grid;place-items:center;font-weight:900;font-size:15px;color:transparent;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.card.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--rice) inset}
+.card.on .tick{background:var(--rice);border-color:var(--rice);color:var(--rice-ink)}
+.card input:focus-visible~.tick{outline:2px solid var(--ink);outline-offset:2px}
+.card b{display:block;font-size:17px;line-height:1.35}
+.card .area{display:inline-block;font-size:12px;background:var(--line);border-radius:6px;padding:1px 7px;margin:4px 6px 0 0}
+.card small{color:var(--soft);font-size:13px}
+.card a{display:inline-block;margin-top:8px;font-size:14px;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.q.bad .card{border-color:var(--err)}
 .muted{color:var(--soft);font-size:14px;margin:6px 0 0}
 .join{margin-top:28px;padding:18px 16px;border-radius:14px;background:var(--rice-wash)}
 .join[hidden]{display:none}
@@ -248,16 +250,23 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
 
   // ---------- 店家清單（沿用原本的 API） ----------
   function loadRestaurants(){
-    var p = PREVIEW ? Promise.resolve({title:'7 月探店邀請',restaurants:[{id:1,name:'示範餐廳 A',desc:'台北信義｜日式燒肉｜可 2 人'},{id:2,name:'示範餐廳 B',desc:'台中西屯｜早午餐'}]})
+    var p = PREVIEW ? Promise.resolve({title:'10 月探店邀請',restaurants:[{id:1,name:'示範餐廳 A',area:'中山區',desc:'巷弄昭和居酒屋',image:'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20640%20360%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23b5523b%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23e5a15c%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%22640%22%20height%3D%22360%22%20fill%3D%22url%28%23g%29%22/%3E%3C/svg%3E',link:'#'},{id:2,name:'示範餐廳 B',area:'大安區',desc:'沒有照片時的樣子',image:'',link:''}]})
                     : fetch(API_URL).then(function(r){return r.json()});
     p.then(function(payload){
       if(payload.title) $('form-title').textContent=payload.title;
       var list=payload.restaurants||[], box=$('restaurant-list');
-      if(!list.length){ box.innerHTML='<p class="muted">這一期的店家還在準備中，晚點再來看看。</p>'; return; }
+      if(!list.length){ box.innerHTML='<p class="muted">新一期的店家還在準備中，開放報名時我們會在 LINE 上通知你，先入社就不會錯過喔！</p>'; return; }
       box.innerHTML=list.map(function(r){
-        return '<label class="shop"><input type="checkbox" class="restaurant-check" value="'+esc(r.name)+'">'+
-               '<div><span class="box">✓</span><b>'+esc(r.id)+'. '+esc(r.name)+'</b><small>'+esc(r.desc)+'</small></div></label>';
+        var img=r.image?'<img src="'+esc(r.image)+'" alt="'+esc(r.name)+'" loading="lazy">':'';
+        var area=r.area?'<span class="area">'+esc(r.area)+'</span>':'';
+        var link=r.link?'<br><a href="'+esc(r.link)+'" target="_blank" rel="noopener">看店家資訊 →</a>':'';
+        return '<label class="card'+(r.image?'':' noimg')+'"><input type="checkbox" class="restaurant-check" value="'+esc(r.name)+'">'+img+
+               '<span class="tick" aria-hidden="true">✓</span><div class="txt"><b>'+esc(r.name)+'</b>'+area+'<small>'+esc(r.desc)+'</small>'+link+'</div></label>';
       }).join('');
+      // 勾選時整張卡片變色（相容不支援 :has 的舊手機）
+      box.addEventListener('change',function(e){ if(e.target.classList.contains('restaurant-check')) e.target.closest('.card').classList.toggle('on',e.target.checked); });
+      // 點「看店家資訊」只開連結，不會勾選
+      box.addEventListener('click',function(e){ if(e.target.closest('a')) e.stopPropagation(); });
     }).catch(function(){
       $('restaurant-list').innerHTML='<p class="muted" style="color:var(--err)">店家清單載入失敗，請關閉後重新開啟。</p>';
     });
@@ -316,7 +325,7 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
     btn.disabled=true; btn.textContent='送出中…'; $('sendErr').style.display='none';
     var p = PREVIEW ? new Promise(function(ok){ setTimeout(function(){ ok({status:'ok'}) },500) }) : post(API_URL,data);
     p.then(function(r){
-      if(r.status==='ok') done();
+      if(r.status==='ok') done(data);
       else fail(r.message);
     }).catch(function(){ fail(); });
   });
@@ -324,9 +333,15 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
     btn.disabled=false; btn.textContent='送出報名';
     var a=$('sendErr'); a.style.display='block'; a.textContent='送出失敗'+(m?'：'+m:'，請稍後再按一次「送出報名」。');
   }
-  function done(){
+  function done(data){
     $('f').style.display='none'; $('bar').style.display='none'; $('who').hidden=true;
     $('done').classList.add('show'); window.scrollTo(0,0);
+    // 自動在官方帳號聊天室傳一則報名通知（需在 LIFF 設定開啟 chat_message.write）
+    if(!PREVIEW && data && liff.isInClient()){
+      var text='我報名了本期探店！\n店家：'+data.restaurants.join('、')+'\n可配合時間：'+data.availability;
+      if(text.length>4900) text=text.slice(0,4900)+'…';
+      liff.sendMessages([{type:'text',text:text}]).catch(function(){});
+    }
   }
   $('closeBtn').addEventListener('click',function(){ if(!PREVIEW && liff.isInClient()) liff.closeWindow(); });
 
