@@ -312,7 +312,7 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
         var area=r.area?'<span class="area">'+esc(r.area)+'</span>':'';
         var link=r.link?'<a href="'+esc(r.link)+'" target="_blank" rel="noopener">看店家資訊 →</a>':'';
         var unit=function(v,u){ return /^\d+$/.test(String(v))?v+' '+u:v; };   // 純數字自動加單位
-        var info=[['可探店時間',r.time],['需求組數',r.groups&&unit(r.groups,'組')],['每組人數',r.size&&unit(r.size,'人')],['合作條件',r.terms]]
+        var info=[['可探店時間',r.time],['需求組數',r.groups&&unit(r.groups,'組')],['每組人數',r.size&&unit(r.size,'人')],['合作內容',r.terms]]
           .filter(function(x){return x[1]}).map(function(x){return '<dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd>'}).join('');
         info=info?'<dl>'+info+'</dl>':'';
         return '<label class="card'+(r.image?'':' noimg')+'"><input type="checkbox" class="restaurant-check" value="'+esc(r.name)+'">'+img+
