@@ -186,6 +186,17 @@ button.linebtn{width:100%;margin-top:22px}
 .join .msg{font-size:13px;margin-top:8px;min-height:1.2em}
 .join .msg.err2{color:var(--err)}
 #fields[hidden]{display:none}
+/* ---- 還沒開放 ---- */
+.closed{margin-top:28px;padding:28px 20px;border:1.5px solid var(--line);border-radius:16px;text-align:center}
+.closed[hidden],.closed [hidden]{display:none}
+.closed .badge{display:inline-block;background:var(--rice);color:var(--rice-ink);font-weight:900;font-size:13px;letter-spacing:.08em;padding:4px 12px;border-radius:999px}
+.closed h2{font-size:22px;font-weight:900;margin:14px 0 6px}
+.closed p{margin:0;color:var(--soft);font-size:15px;line-height:1.7}
+.closed .guest{margin-top:20px;padding-top:18px;border-top:1px dashed var(--line)}
+.closed .guest p{font-size:14px;margin-bottom:12px}
+.closed .primary{display:flex;align-items:center;justify-content:center;min-height:50px;border-radius:12px;background:var(--rice);color:var(--rice-ink);font-weight:700;text-decoration:none;font-size:16px}
+.closed .ok{margin-top:18px;padding:12px;border-radius:10px;background:var(--rice-wash);color:var(--ink);font-size:14px;font-weight:700}
+.closed .back{display:block;width:100%;margin-top:14px;min-height:48px;border-radius:12px;background:transparent;border:1.5px solid var(--line);color:var(--ink);font-size:15px;font-weight:700}
 </style>
 </head>
 <body>
@@ -236,6 +247,18 @@ button.linebtn{width:100%;margin-top:22px}
     </div>
   </form>
 
+  <section class="closed" id="closed" hidden>
+    <span class="badge">準備中</span>
+    <h2>下一期店家準備中</h2>
+    <p>開放報名時，我們會在 LINE 上通知你。</p>
+    <div class="guest" id="closedGuest" hidden>
+      <p>還沒入社嗎？先完成入社，開放時就能第一時間報名。</p>
+      <a class="primary" id="closedJoin" href="#">我要入社</a>
+    </div>
+    <div class="ok" id="closedMember" hidden>你已經是社員了，開放時會通知你 ✓</div>
+    <button type="button" class="back" id="closedBack">回到聊天室</button>
+  </section>
+
   <div class="gate" id="gate" hidden>
     <h2 id="gateTitle">請從 LINE 開啟</h2>
     <p id="gateMsg">這份報名表需要在 LINE 裡開啟。請到「OpenRice 合作社」官方帳號，點選單上的「Collab 本期探店邀請」。</p>
@@ -263,7 +286,7 @@ var JOIN_URL = 'https://liff.line.me/2010886104-ALoRi8QM?from=collab';   // 入�
 var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // 本機預覽用，不會送出
 
 (function(){
-  var profile=null, isMember=false, memberNick='';
+  var profile=null, isMember=false, memberNick='', closed=false, memberKnown=false;
   var btn=document.getElementById('submit-btn');
   function $(id){return document.getElementById(id)}
   function esc(t){return String(t==null?'':t).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -306,7 +329,7 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
     p.then(function(payload){
       if(payload.title) $('form-title').textContent=payload.title;
       var list=payload.restaurants||[], box=$('restaurant-list');
-      if(!list.length){ box.innerHTML='<p class="muted">新一期的店家還在準備中，開放報名時我們會在 LINE 上通知你，先入社就不會錯過喔！</p>'; return; }
+      if(!list.length){ closed=true; applyClosed(); return; }
       var cards=list.map(function(r){
         var img=r.image?'<img src="'+esc(r.image)+'" alt="'+esc(r.name)+'" loading="lazy">':'';
         var area=r.area?'<span class="area">'+esc(r.area)+'</span>':'';
@@ -336,15 +359,29 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
     });
   }
 
+  // ---------- 還沒開放 ----------
+  function applyClosed(){
+    if(!closed) return;
+    $('shopQ').hidden=true; $('joinBox').hidden=true; $('fields').hidden=true; $('bar').style.display='none';
+    $('closed').hidden=false;
+    var lede=document.querySelector('.lede'); if(lede) lede.hidden=true;
+    $('closedMember').hidden=!(memberKnown && isMember);
+    $('closedGuest').hidden=!(memberKnown && !isMember);
+  }
+  $('closedJoin').addEventListener('click',function(e){ e.preventDefault(); location.href=JOIN_URL; });
+  $('closedBack').addEventListener('click',function(){ if(!PREVIEW && liff.isInClient()) liff.closeWindow(); });
+
   // ---------- 入社狀態 ----------
   function setMember(r){
-    isMember=true; memberNick=r.nick||'';
+    isMember=true; memberKnown=true; memberNick=r.nick||'';
     $('joinBox').hidden=true; $('fields').hidden=false; btn.disabled=false;
     $('whoText').innerHTML='社員 <b>'+esc(memberNick||profile.displayName)+'</b>，以 LINE 帳號報名';
     if(r.ig && !$('ig-handle').value){ $('ig-handle').value=r.ig; $('igHint').textContent='已帶入你入社時填的帳號，有變動可以直接修改'; }
+    applyClosed();
   }
   function setGuest(){
-    isMember=false; $('joinBox').hidden=false; $('fields').hidden=true; btn.disabled=true;
+    isMember=false; memberKnown=true; $('joinBox').hidden=false; $('fields').hidden=true; btn.disabled=true;
+    applyClosed();
   }
   function checkMember(){
     if(PREVIEW) return Promise.resolve(setGuest());
@@ -389,7 +426,7 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
     btn.disabled=true; btn.textContent='送出中…'; $('sendErr').style.display='none';
     var p = PREVIEW ? new Promise(function(ok){ setTimeout(function(){ ok({status:'ok'}) },500) }) : post(API_URL,data);
     p.then(function(r){
-      if(r.status==='ok') done(data);
+      if(r.status==='ok') done();
       else fail(r.message);
     }).catch(function(){ fail(); });
   });
@@ -397,15 +434,9 @@ var PREVIEW = new URLSearchParams(location.search).get('preview')==='1';   // �
     btn.disabled=false; btn.textContent='送出報名';
     var a=$('sendErr'); a.style.display='block'; a.textContent='送出失敗'+(m?'：'+m:'，請稍後再按一次「送出報名」。');
   }
-  function done(data){
+  function done(){
     $('f').style.display='none'; $('bar').style.display='none'; $('who').hidden=true;
     $('done').classList.add('show'); window.scrollTo(0,0);
-    // 自動在官方帳號聊天室傳一則報名通知（需在 LIFF 設定開啟 chat_message.write）
-    if(!PREVIEW && data && liff.isInClient()){
-      var text='我報名了本期探店！\n店家：'+data.restaurants.join('、')+'\n可配合時間：'+data.availability;
-      if(text.length>4900) text=text.slice(0,4900)+'…';
-      liff.sendMessages([{type:'text',text:text}]).catch(function(){});
-    }
   }
   $('closeBtn').addEventListener('click',function(){ if(!PREVIEW && liff.isInClient()) liff.closeWindow(); });
 
