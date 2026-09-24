@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="only light">
 <title>OpenRice Foodie Club 本期探店邀請</title>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,10 +16,6 @@
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){--bg:#17150f;--ink:#f3efe6;--soft:#a9a194;--line:#353127;--field:#211e17;--rice-wash:#3a3117;--err:#ff7a63;--ok:#6fcf97}
-}
-:root[data-theme="dark"]{--bg:#17150f;--ink:#f3efe6;--soft:#a9a194;--line:#353127;--field:#211e17;--rice-wash:#3a3117;--err:#ff7a63;--ok:#6fcf97}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;font-size:16px;line-height:1.6}
@@ -27,8 +24,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","
 /* header */
 header{padding:28px 0 8px}
 .logo{display:block;width:150px;height:auto}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo{background:#fff;border-radius:10px;padding:8px 10px;box-sizing:content-box}}
-:root[data-theme="dark"] .logo{background:#fff;border-radius:10px;padding:8px 10px;box-sizing:content-box}
 h1{font-size:28px;line-height:1.25;font-weight:900;margin:18px 0 6px;letter-spacing:-.01em}
 .lede{color:var(--soft);font-size:15px;margin:0}
 
